@@ -1,8 +1,15 @@
 
 import bluetooth, os
 from threading import Thread #Need thread to listen to stop waiting
+import threading
 
-
+def connectionHandler(connection):
+    
+    print("INside connection handler")
+    data = connection.recv(1024)
+    print ("received [%s]" % data)
+    return
+    
 
 #Thread which listens on a port and then loops to 
 #recivee all messages from that conection
@@ -14,12 +21,28 @@ class socketListener(Thread):
         server_sock.bind(("",port))
         server_sock.listen(1)
         while True:
-            
-            client_sock,address = server_sock.accept()
-            print ("Accepted connection from ",address)
+            print("Looping")
 
-            data = client_sock.recv(1024)
-            print ("received [%s]" % data)
+            connection,address = server_sock.accept()
+            print ("Accepted connection from ",address)
+            
+            handlerThread = Thread(target=connectionHandler, args=(connection,))
+            handlerThread.start()
+            print("thread done")
+            handlerThread.join()
+            # connection.close()
+        
+        #ch.start()
+        #print(ch.address)
+        
+        # client_sock,address = server_sock.accept()
+        # print ("Accepted connection from ",address)
+
+        # data = client_sock.recv(1024)
+        # print ("received [%s]" % data)
+
+
+    
 
 
 #Start the thread and then kill the process
@@ -27,7 +50,7 @@ class socketListener(Thread):
 pid = os.getpid()
 sl = socketListener()
 sl.start()
-input('Socket is listening, press any key to abort...')
+input('Socket is listening, press any key to abort...\n')
 os.kill(pid,9)
 
 
