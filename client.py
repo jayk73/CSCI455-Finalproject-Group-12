@@ -35,10 +35,10 @@ port = 5
 sock=bluetooth.BluetoothSocket( bluetooth.RFCOMM )
 
 
-
 sock.connect((bd_addr, port))
 
 while True:
+    
     inp = input("Enter a message to send (enter 'quit' to quit):\n")
     print(inp)
     if (inp == "quit"):
