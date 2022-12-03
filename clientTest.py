@@ -1,4 +1,5 @@
-import bluetooth
+import bluetooth, sys
+
 
 print("Looking for nearby devices .... ")
 
@@ -30,21 +31,23 @@ choice = choice-1
 bd_addr = my_list[choice][2]
 
 
-port = 5
+port = 5 #arbitrary number, there is code to serach for an available port
 
-sock=bluetooth.BluetoothSocket( bluetooth.RFCOMM )
+server_sock = bluetooth.BluetoothSocket( bluetooth.RFCOMM )
 
 
-sock.connect((bd_addr, port))
+name = input("enter friends\'s name: ")
+
+server_sock.connect((bd_addr, port))
+
+server_sock.send(name.encode())
+server_name = server_sock.recv(1024)
+server_name = server_name.decode()
+
+print(server_name, ' has joined ...')
 
 while True:
-    
-    inp = input("Enter a message to send (enter 'quit' to quit):\n")
-    
-    if (inp == "quit"):
-        break
-    else:
-        sock.send(inp.encode())
-
-
-sock.close()
+    message = (server_sock.recv(1024)).decode()
+    print(server_name, ":", message)
+    message = input("ME : ")
+    server_sock.send(message.encode())
