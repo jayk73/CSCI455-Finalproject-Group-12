@@ -13,7 +13,7 @@ server_sock = bluetooth.BluetoothSocket( bluetooth.RFCOMM )
 
 #For a client connection; thread to listen for incoming messages from the server
 class ClientSocketListener(QObject):
-    progress = pyqtSignal(str)
+    progress = pyqtSignal(str, bluetooth.BluetoothSocket)
     def run(self):
         while True:
             sockets_list = [bluetooth.BluetoothSocket(), client_sock]
@@ -25,7 +25,7 @@ class ClientSocketListener(QObject):
                         if mess:
                             print(mess + " in socket listener")
                             #Send message back to ChatRoom to add to widget
-                            self.progress.emit(mess)
+                            self.progress.emit(mess, client_sock)
                             #continue
             except:
                 continue
@@ -99,7 +99,7 @@ class ChatRoom(QMainWindow, Ui_ChatRoom):
         #Print the message to the listview
         self.sendMessage_button.clicked.connect(self.sendMessage)
 
-    def printMessge(self, message):
+    def printMessge(self, message, conn):
         print("In other: " + message)
         self.chatDisplay_listWidget.addItem(message)
         # self.chatDisplay_listWidget.repaint()
