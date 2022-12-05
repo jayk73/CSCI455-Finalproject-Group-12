@@ -36,11 +36,19 @@ class ClientSocketListener(QObject):
 class NewConnectionListener(QObject):
     # progress = pyqtSignal(str)
     sockets = pyqtSignal(bluetooth.BluetoothSocket, tuple)
+    test = pyqtSignal(bluetooth.BluetoothSocket, str)
+    clientMessage = pyqtSignal(bluetooth.BluetoothSocket)
+
     def run(self):
         while True:
             connection, address = server_sock.accept()
+            print("accepting connection")
+            
             #Maintain a list of clients so you can broadcast messages to all clients
             self.sockets.emit(connection, address)
+
+            #Welcome them to the server 
+            self.test.emit(connection, "Welcome to the server!")
 
 #Server listens to a specifc connection for mesages from client          
 class clientListener(QObject):
@@ -56,9 +64,9 @@ class clientListener(QObject):
         self.run(conn, self.addr)
 
     def run(self, conn, addrr):
+        print("Running")
         print(conn)
-        #Welcome them to the server 
-        self.sockets.emit("Welcome to the server!", conn)
+        
         while True:
             try:
                 data = conn.recv(1024).decode()
@@ -140,6 +148,7 @@ class ChatRoomServer(QMainWindow, Ui_ChatRoom):
         self.thread1.started.connect(self.worker1.run)
         #When Thread sends signal, add client to list of clients
         self.worker1.sockets.connect(self.addToList) 
+        self.worker1.test.connect(self.serverWelcome) 
         self.thread1.start()
 
         self.sendMessage_button.clicked.connect(self.sendMessage)
@@ -147,24 +156,28 @@ class ChatRoomServer(QMainWindow, Ui_ChatRoom):
     def addToList(self, connection, address):
         #Add client to list
         self.list_of_clients.append(connection)
+        print("Current List: ")
+        for val in self.list_of_clients:
+            print(val)
 
-        #Start a thread to listenm on this connection
-        self.thread2 = QThread()
-        self.worker2 = clientListener(connection, address)
-        self.worker2.moveToThread(self.thread2)
-        self.thread2.started.connect(self.worker2.run)
+        # #Start a thread to listenm on this connection
+        # self.thread2 = QThread()
+        # self.worker2 = clientListener(connection, address)
+        # self.worker2.moveToThread(self.thread2)
+        # self.thread2.started.connect(self.worker2.run)
 
-        #Upon input from the thread, broadcast message
-        self.worker2.sockets.connect(self.broadcast)
-        self.worker2.remover.connect(self.removeFromList)
+        # #Upon input from the thread, broadcast message
+        # self.worker2.sockets.connect(self.broadcast)
+        # self.worker2.remover.connect(self.removeFromList)
 
-        self.thread2.start()
+        # self.thread2.start()
+        print("Added to list")
 
 
     def removeFromList(self, client):
         if client in self.list_of_clients:
             self.list_of_clients.remove(client)
-
+    #For forwarding a message from one client to others
     def broadcast(self, message, client):
         for clients in self.list_of_clients:
             # if clients != client:
@@ -189,6 +202,14 @@ class ChatRoomServer(QMainWindow, Ui_ChatRoom):
                     pass 
         # client_sock.send(message)
         self.chatDisplay_listWidget.addItem("<YOU> " + message)
+
+    def serverWelcome(self, connection):
+        message = "Welcome to the server"
+        print("Sending welcome message")#debugging
+        for clients in self.list_of_clients:
+            if clients == connection:
+                connection.send(message).encode()
+                print("Sending " + message + " to " + str(clients))
 
 
 
