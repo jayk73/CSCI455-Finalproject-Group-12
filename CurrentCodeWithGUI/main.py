@@ -243,6 +243,8 @@ class ChatRoomServer(QMainWindow, Ui_ChatRoom):
             self.list_of_clients.remove(client)
     #For forwarding a message from one client to others
     def broadcast(self, message, client):
+        self.chatDisplay_listWidget.addItem(message)
+
         for clients in self.list_of_clients:
             ####
             ##REMEMBER TO UNCOMENT THIS ONLY FOR TESTING!!!!!!!!!
