@@ -9,6 +9,7 @@ from chatWindow import Ui_ChatRoom
 import bluetooth
 
 client_sock = bluetooth.BluetoothSocket( bluetooth.RFCOMM )
+
 server_sock = bluetooth.BluetoothSocket( bluetooth.RFCOMM )
 
 #For a client connection; thread to listen for incoming messages from the server
@@ -80,6 +81,8 @@ class ChatRoom(QMainWindow, Ui_ChatRoom):
     def __init__(self):
         super(ChatRoom, self).__init__()
         
+        #Test to see if connectino worked
+
         self.setupUi(self)
         #Create QThread
         self.thread = QThread()
@@ -108,18 +111,21 @@ class ChatRoom(QMainWindow, Ui_ChatRoom):
         # QApplication.processEvents()
         # QCoreApplication.processEvents()
         
-        print('sending message: ' + message)
+        print('Got message: ' + message)
 
     def sendMessage(self):
         
         message = self.enterMessage_textBox.toPlainText()
-        print("Sending message: " + message)
+        print("Sending message: " + message + " to " + str(client_sock) )
         #Remove new line charachters from text to prevent from breaking the server
         message.replace("\n", "")
         self.enterMessage_textBox.setPlainText("")
-
-        client_sock.send(message)
+        
+        # client_sock.send(message).encode()
         self.chatDisplay_listWidget.addItem("<YOU> " + message)
+        # test = str(client_sock.send(message).encode() )
+        message = message.encode()
+        client_sock.send(message)
     
 class ChatRoomServer(QMainWindow, Ui_ChatRoom):
     list_of_clients = []
@@ -224,8 +230,8 @@ class StartPage(QMainWindow, Ui_StartingPage):
             #Attempt to form connection
             try:
                 port = 5
-                
                 client_sock.connect((remoteAddress, port))
+
                 conn = True
             except:
                 # print("Failed to connect")
