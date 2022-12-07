@@ -5,12 +5,21 @@ from PyQt5.QtCore    import *
 from threading import Thread
 from startingPage import Ui_StartingPage
 from chatWindow import Ui_ChatRoom
-# from testing import Ui_MainWindow
+import threading
 import bluetooth
 max_connections = 5
 client_sock = bluetooth.BluetoothSocket( bluetooth.RFCOMM )
 
 server_sock = bluetooth.BluetoothSocket( bluetooth.RFCOMM )
+
+#Listens for any output from print statements.
+class EmittingStream(QObject):
+
+    textWritten = pyqtSignal(str)
+
+    def write(self, text):
+        self.textWritten.emit(str(text))
+
 
 #For a client connection; thread to listen for incoming messages from the server
 class ClientSocketListener(QObject):
@@ -27,6 +36,7 @@ class ClientSocketListener(QObject):
                             print(mess + " in socket listener")
                             #Send message back to ChatRoom to add to widget
                             self.progress.emit(mess, client_sock)
+                           
                             #continue
             except:
                 continue
@@ -85,6 +95,10 @@ class NewConnectionListener(QObject):
         # list_of_clients.append(connection)
         self.sockets.emit(connection, address)
 
+        #Start listening to that connection
+        threading.Thread(target= clientThread, args=(connection,address) ).start()
+
+        
         name = "No Name"
         name = bluetooth.lookup_name(address)
         if name is not None:
@@ -145,47 +159,63 @@ class NewConnectionListener(QObject):
         self.clientToRemove.emit(conn)
 
 
-
-
-#Server listens to a specifc connection for mesages from client          
-class clientListener(QObject):
-    progress = pyqtSignal(str)
-    sockets = pyqtSignal(str, bluetooth.BluetoothSocket) #Message, connection
-    CLMessage = pyqtSignal(str, bluetooth.BluetoothSocket)
-    remover = pyqtSignal(bluetooth.BluetoothSocket)
+#Listens on a client connection and print everything it hears.
+def clientThread(connection, address):
+    print("thread created")
+    connection.send("<SERVER> Welcome to this chatroom!")
     
-    def __init__(self, inConn, address):
-        super(clientListener, self).__init__()
-        # print("Listening. Passed in " + str(inConn) + " " + str(address) )
-        self.conn = inConn
-        self.addr = address
-        # print("Listening2")
+    while True:
+        try:
+            data = connection.recv(1024).decode()
+            if data:
+                print ("<" + address[0] + "> " + data)
+                message_to_send = "<" + address[0] + "> " + data
+                # forward(message_to_send, connection)
+            else:
+                # remove(connection)
+                print("Removing connection")
+                break
+        except:
+            continue
+# #Server listens to a specifc connection for mesages from client          
+# class clientListener(QObject):
+#     progress = pyqtSignal(str)
+#     sockets = pyqtSignal(str, bluetooth.BluetoothSocket) #Message, connection
+#     CLMessage = pyqtSignal(str, bluetooth.BluetoothSocket)
+#     remover = pyqtSignal(bluetooth.BluetoothSocket)
+    
+#     def __init__(self, inConn, address):
+#         super(clientListener, self).__init__()
+#         # print("Listening. Passed in " + str(inConn) + " " + str(address) )
+#         self.conn = inConn
+#         self.addr = address
+#         # print("Listening2")
 
 
-    def run(self):
+#     def run(self):
         
-        while True:
-            try:
-                # data = self.conn.recv(1024).decode()
-                data = self.conn.recv(1024).decode()
+#         while True:
+#             try:
+#                 # data = self.conn.recv(1024).decode()
+#                 data = self.conn.recv(1024).decode()
                 
 
-                if data:
-                    print ("<" + self.addr[0] + "> " + data)
+#                 if data:
+#                     print ("<" + self.addr[0] + "> " + data)
                     
-                    message_to_send = ("<" + self.addr[0] + "> " + data)
-                    # broadcast(message_to_send, connection)
+#                     message_to_send = ("<" + self.addr[0] + "> " + data)
+#                     # broadcast(message_to_send, connection)
                     
-                    self.CLMessage.emit(message_to_send, self.conn)
+#                     self.CLMessage.emit(message_to_send, self.conn)
 
-                else:
-                    # remove(connection)
-                    time.sleep(1)
-                    self.remover.emit(self.conn)
-                    print("Removing connection")
-                    break
-            except:
-                continue
+#                 else:
+#                     # remove(connection)
+#                     time.sleep(1)
+#                     self.remover.emit(self.conn)
+#                     print("Removing connection")
+#                     break
+#             except:
+#                 continue
 
 
 class ChatRoom(QMainWindow, Ui_ChatRoom):
@@ -264,7 +294,12 @@ class ChatRoomServer(QMainWindow, Ui_ChatRoom):
         self.thread1.start()
 
         self.sendMessage_button.clicked.connect(self.sendMessage)
+
+        sys.stdout = EmittingStream(textWritten=self.normalOutputWritten)
     
+    def normalOutputWritten(self, text):
+        self.chatDisplay_listWidget.addItem(text)
+
     def manageNewConnection(self, connection, address):
         #####################################
         #####################################
@@ -274,28 +309,29 @@ class ChatRoomServer(QMainWindow, Ui_ChatRoom):
         #######################
         self.addToList(connection, address)
         self.serverWelcome(connection)
-        while True:
-            try:
-                
-                data = connection.recv(1024).decode
-                # data = self.conn.recv(1024).decode()
-                if data:
-                    print ("<" + address[0] + "> " + data)
-                    
-                    message_to_send = ("<" + address[0] + "> " + data)
-                    # broadcast(message_to_send, connection)
-                    self.broadcast(message_to_send, connection)
-                    # self.CLMessage.emit(message_to_send, self.conn)
 
-                else:
-                    # remove(connection)
-                    time.sleep(1)
-                    # self.remover.emit(self.conn)
-                    self.removeFromList(connection)
-                    print("Removing connection")
-                    break
-            except:
-                continue
+        # while True:
+        #     try:
+                
+        #         data = connection.recv(1024).decode
+        #         # data = self.conn.recv(1024).decode()
+        #         if data:
+        #             print ("<" + address[0] + "> " + data)
+                    
+        #             message_to_send = ("<" + address[0] + "> " + data)
+        #             # broadcast(message_to_send, connection)
+        #             self.broadcast(message_to_send, connection)
+        #             # self.CLMessage.emit(message_to_send, self.conn)
+
+        #         else:
+        #             # remove(connection)
+        #             time.sleep(1)
+        #             # self.remover.emit(self.conn)
+        #             self.removeFromList(connection)
+        #             print("Removing connection")
+        #             break
+        #     except:
+        #         continue
 
 
 
