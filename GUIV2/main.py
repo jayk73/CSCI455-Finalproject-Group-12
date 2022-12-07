@@ -35,7 +35,7 @@ class ClientSocketListener(QObject):
                         if mess:
                             print(mess + " in socket listener")
                             #Send message back to ChatRoom to add to widget
-                            self.progress.emit(mess, client_sock)
+                            # self.progress.emit(mess, client_sock)
                            
                             #continue
             except:
@@ -68,55 +68,55 @@ class NewConnectionListener(QObject):
         #     #Welcome them to the server 
         #     self.test.emit(connection, "Welcome to the server!")
 
-        
-        server_sock = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
-        server_sock.bind(("", bluetooth.PORT_ANY))
-        #Manages how many unnacepted connections can be managed
-        server_sock.listen(1)
+        while True:
+            server_sock = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
+            server_sock.bind(("", bluetooth.PORT_ANY))
+            #Manages how many unnacepted connections can be managed
+            server_sock.listen(1)
 
-        port = server_sock.getsockname()[1]
+            port = server_sock.getsockname()[1]
 
-        # uuid = "94f39d29-7d6d-437d-973b-fba39e49d4ee"
+            # uuid = "94f39d29-7d6d-437d-973b-fba39e49d4ee"
 
-        uuid =  "0E448EB5-3425-ED48-91BE-1AED04C0512D"
+            uuid =  "0E448EB5-3425-ED48-91BE-1AED04C0512D"
 
-        bluetooth.advertise_service(server_sock, "SampleServer", service_id=uuid,
-                                    service_classes=[uuid, bluetooth.SERIAL_PORT_CLASS],
-                                    profiles=[bluetooth.SERIAL_PORT_PROFILE],
-                                    # protocols=[bluetooth.OBEX_UUID]
-                                    )
+            bluetooth.advertise_service(server_sock, "SampleServer", service_id=uuid,
+                                        service_classes=[uuid, bluetooth.SERIAL_PORT_CLASS],
+                                        profiles=[bluetooth.SERIAL_PORT_PROFILE],
+                                        # protocols=[bluetooth.OBEX_UUID]
+                                        )
 
-        print("Waiting for connection on RFCOMM channel", port)
-        #Accepts connection request. Store paramteters 'connection' and 'address'
-        #which is socket object for that user and bluettooth address they connected from
-        connection, address = server_sock.accept()
+            print("Waiting for connection on RFCOMM channel " +  str(port) )
+            #Accepts connection request. Store paramteters 'connection' and 'address'
+            #which is socket object for that user and bluettooth address they connected from
+            connection, address = server_sock.accept()
 
-        #Maintain a list of clients so you can broadcast messages to all clients
-        # list_of_clients.append(connection)
-        self.sockets.emit(connection, address)
+            #Maintain a list of clients so you can broadcast messages to all clients
+            # list_of_clients.append(connection)
+            self.sockets.emit(connection, address)
 
-        #Start listening to that connection
-        threading.Thread(target= clientThread, args=(connection,address) ).start()
+            #Start listening to that connection
+            threading.Thread(target= clientThread, args=(connection,address) ).start()
 
-        
-        name = "No Name"
-        name = bluetooth.lookup_name(address)
-        if name is not None:
-            print("hi")
-        #When a user clonnects, print the address of that user
-        # print ( address[0] + " " + name + " connected")
-        # broadcast (address[0] + " " + name +" connected to the server")
-        # creates and individual thread for every user
-        # that connects
-        # print("Creating thread")
-        # threading.Thread(target= clientThread, args=(connection,address) ).start()
-        # start_new_thread(clientThread,(connection,address))
+            
+            # name = "No Name"
+            # name = bluetooth.lookup_name(address)
+            # if name is not None:
+            #     print("hi")
+            #When a user clonnects, print the address of that user
+            # print ( address[0] + " " + name + " connected")
+            # broadcast (address[0] + " " + name +" connected to the server")
+            # creates and individual thread for every user
+            # that connects
+            # print("Creating thread")
+            # threading.Thread(target= clientThread, args=(connection,address) ).start()
+            # start_new_thread(clientThread,(connection,address))
 
-        
+            
 
-        bluetooth.stop_advertising(server_sock)
-        #Maybe use this, don't know yet
-        server_sock.close()
+            bluetooth.stop_advertising(server_sock)
+            #Maybe use this, don't know yet
+            server_sock.close()
             
     
     # def watchConnection(self, connection, address):
@@ -447,20 +447,9 @@ class StartPage(QMainWindow, Ui_StartingPage):
         name = first_match["name"]
         host = first_match["host"]
 
-        while conn != True:
-            # print("Address is " + address)
-            # print("Remote is is " + remoteAddress)
-            #Attempt to form connection
-            try:
-                
-                client_sock.connect((host, port))
+        
+        client_sock.connect((host, port))
 
-                conn = True
-            except:
-                # print("Failed to connect")
-                #Let user pick a different port
-                print("Trying again")
-                time.sleep(1)
 
 
         self.hide()

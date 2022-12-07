@@ -51,18 +51,18 @@ for addr, name in nearby_devices:
 
 for element in my_list:
     print(element)
-for element in my_list:
-    print("Looking for servers on " + str(element) + ": ")
-    addressToSearch = element[2]
-    services = bluetooth.find_service( address = addressToSearch )
+# for element in my_list:
+#     print("Looking for servers on " + str(element) + ": ")
+#     addressToSearch = element[2]
+#     services = bluetooth.find_service( address = addressToSearch )
 
-    if len(services) <=0:
-        print("no server found :( \n")
-    else:
-        for ser in services:
-            if  "SampleServer" in str(  ser["name"]   ) :
-                print("Found Running server in " + str(element) )
-                first_match = ser
+#     if len(services) <=0:
+#         print("no server found :( \n")
+#     else:
+#         for ser in services:
+#             if  "SampleServer" in str(  ser["name"]   ) :
+#                 print("Found Running server in " + str(element) )
+#                 first_match = ser
 
 choice = input("Select the index of the device you would like to communicate with:   ")
 choice = int(choice)

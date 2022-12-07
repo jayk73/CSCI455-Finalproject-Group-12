@@ -45,9 +45,9 @@ def forward(message, connection):
 
 #Send a message to all clients
 def broadcast(message):
+    message = message.encode()
     for clients in list_of_clients:
         try:
-            message = message.encode()
             clients.send(message)
         except:#for some reason always goes into except state, even when message is sent correctly
                 pass 
@@ -84,13 +84,13 @@ def socketListner():
 
         #Maintain a list of clients so you can broadcast messages to all clients
         list_of_clients.append(connection)
-        name = "No Name"
-        name = bluetooth.lookup_name(address)
-        if name is not None:
-            print("hi")
+        # name = "No Name"
+        # name = bluetooth.lookup_name(address)
+        # if name is not None:
+        #     print("hi")
         #When a user clonnects, print the address of that user
-        print ( address[0] + " " + name + " connected")
-        broadcast (address[0] + " " + name +" connected to the server")
+        # print ( address[0] + " " + name + " connected")
+        # broadcast (address[0] + " " + name +" connected to the server")
         # creates and individual thread for every user
         # that connects
         # print("Creating thread")
@@ -113,14 +113,15 @@ while True:
     
     if message:
         # message = message.encode()
-        for clients in list_of_clients:
-            try:
-                print("<YOU> " + message)
-                message = "<Server> " + message
-                broadcast(message)   
-                pass
-            except:#for some reason always goes into except state, even when message is sent correctly
-                pass 
+        broadcast(message) 
+        # for clients in list_of_clients:
+        #     try:
+        #         print("<YOU> " + message)
+        #         message = "<Server> " + message
+                  
+        #         pass
+        #     except:#for some reason always goes into except state, even when message is sent correctly
+        #         pass 
 
 
 print("Disconnected.")
