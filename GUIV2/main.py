@@ -50,8 +50,6 @@ class NewConnectionListener(QObject):
     test = pyqtSignal(bluetooth.BluetoothSocket, str)
     clientMessage = pyqtSignal(bluetooth.BluetoothSocket, str)
     clientToRemove = pyqtSignal(bluetooth.BluetoothSocket)
-    
-    
 
     def run(self):
         # port = 5 #arbitrary number, there is code to serach for an available port
@@ -421,7 +419,7 @@ class StartPage(QMainWindow, Ui_StartingPage):
 
         #Address is currently a string in the form: ['INDEX: 3', 'NAME: DESKTOP-EJMNR6P', '6C:94:66:A2:EA:21']
         #Use index and substring to isolate the address at the end
-        index1 = address.index("Address: ") +9
+        index1 = address.index("Address: ") +13
         index2 = address.index("'", index1)
 
         remoteAddress = address[index1:index2]
