@@ -34,6 +34,8 @@ import bluetooth, os
 from threading import Thread
 import threading
 list_of_clients = []
+
+#Listens on a client connection for input from the client.
 def clientThread(connection, address):
     print("thread created")
     connection.send("Welcome to this chatroom!")
@@ -51,12 +53,12 @@ def clientThread(connection, address):
                 break
         except:
             continue
-
+#Forward a message to every client except the one who sent it
 def forward(message, connection):
     for clients in list_of_clients:
         if clients != connection:
             try:
-                message = message.encode()
+                # message = message.encode()
                 clients.send(message)
                 pass
             except:#for some reason always goes into except state, even when message is sent correctly
@@ -65,7 +67,7 @@ def forward(message, connection):
                 # print('removing clinet')
                 # #if link broken, remove client
                 # remove(clients)
-
+#Send a message to all clients
 def broadcast(message):
     for clients in list_of_clients:
         try:
@@ -98,27 +100,12 @@ class socketListner(Thread):
             threading.Thread(target= clientThread, args=(connection,address) ).start()
             # start_new_thread(clientThread,(connection,address))
 
-# pid = os.getpid()
-# s1 = socketListner()
-# s1.start()
-
-# while True:
-#     message = input()
-#     if message:
-#         broadcast("<Server> " + message, "Bob")
-
-#!/usr/bin/env python3
-"""PyBluez simple example rfcomm-server.py
-Simple demonstration of a server application that uses RFCOMM sockets.
-Author: Albert Huang <albert@csail.mit.edu>
-$Id: rfcomm-server.py 518 2007-08-10 07:20:07Z albert $
-"""
-
 
 
 server_sock = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
 server_sock.bind(("", bluetooth.PORT_ANY))
-server_sock.listen(3)
+#Manages how many unnacepted connections can be managed
+server_sock.listen(10)
 
 port = server_sock.getsockname()[1]
 
@@ -140,12 +127,16 @@ s1.start()
 
 while True:
     message = input()
-    message = message.encode()
+    
     if message:
+        # message = message.encode()
         for clients in list_of_clients:
             try:
-                message = message.encode()
-                clients.send(message)
+                print("<YOU> " + message)
+                message = "<Server>" + message
+                broadcast(message)
+                
+                
                 pass
             except:#for some reason always goes into except state, even when message is sent correctly
                 pass 
