@@ -316,19 +316,41 @@ class StartPage(QMainWindow, Ui_StartingPage):
 
         remoteAddress = address[index1:index2]
 
+        #Check for the server service
+        service_matches = bluetooth.find_service( address = remoteAddress )
+
+        first_match = None
+        if len(service_matches) == 0:
+            print("Couldn't find the SampleServer service.")
+            sys.exit(0)
+        else:
+            for ser in service_matches:
+                if  "SampleServer" in str(  ser["name"]   ) :
+                    print("Found service: " + str(ser))
+                    first_match = ser
+        if first_match is None:
+            #Can't detect server; quit
+            print("Couldn't find the SampleServer service.")
+            sys.exit(0)
+
+        port = first_match["port"] 
+        name = first_match["name"]
+        host = first_match["host"]
+
         while conn != True:
             # print("Address is " + address)
             # print("Remote is is " + remoteAddress)
             #Attempt to form connection
             try:
-                port = 5
-                client_sock.connect((remoteAddress, port))
+                
+                client_sock.connect((host, port))
 
                 conn = True
             except:
                 # print("Failed to connect")
                 #Let user pick a different port
-                busyWait = 5 + 1
+                print("Trying again")
+                time.sleep(1)
 
 
         self.hide()
