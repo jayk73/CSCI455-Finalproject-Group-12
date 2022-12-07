@@ -1,38 +1,13 @@
 
-# import bluetooth, os, sys
-# from _thread import * #Need thread to listen to stop waiting
-# import threading
-# from threading import Thread
-
-# server_sock=bluetooth.BluetoothSocket( bluetooth.RFCOMM )
-
-# ser = bluetooth.BluetoothSocket()
-
-
-# # port = bluetooth.get_available_port( bluetooth.RFCOMM )
-# # port = bluetooth.get_available_port( 0 )
-# # port = 5
-# server_sock.bind(("",bluetooth.PORT_ANY))
-
-
-# server_sock.listen(10) #Allows 10 active connections
-# port = server_sock.getsockname()[1]
-# print ("listening on port %d",port)
-
-# # uuid = "4C4C4544-0036-3910-8052-C7C04F344233"
-# uuid  = "94f39d29-7d6d-437d-973b-fba39e49d4ee"
-
-# # bluetooth.advertise_service( sock=server_sock, name= "Bob Service")
-# bluetooth.advertise_service(server_sock, "SampleServer", service_id=uuid,
-#                             service_classes=[uuid, bluetooth.SERIAL_PORT_CLASS],
-#                             profiles=[bluetooth.SERIAL_PORT_PROFILE],
-#                             # protocols=[bluetooth.OBEX_UUID]
-#                             )
-
 
 import bluetooth, os
 from threading import Thread
 import threading
+##############################
+####################################33
+###Turn this into a dictionary that stores connection and name side by side
+######################################
+######################33333
 list_of_clients = []
 
 #Listens on a client connection for input from the client.
@@ -60,13 +35,14 @@ def forward(message, connection):
             try:
                 # message = message.encode()
                 clients.send(message)
-                pass
+                
             except:#for some reason always goes into except state, even when message is sent correctly
                 pass 
                 # clients.close()
                 # print('removing clinet')
                 # #if link broken, remove client
                 # remove(clients)
+
 #Send a message to all clients
 def broadcast(message):
     for clients in list_of_clients:
@@ -82,8 +58,6 @@ def remove(connection):
 
 
 def socketListner():
-    print("IN socket listenier")
-    
     while True:
         #Maybe put this outside while lop
         server_sock = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
@@ -110,16 +84,20 @@ def socketListner():
 
         #Maintain a list of clients so you can broadcast messages to all clients
         list_of_clients.append(connection)
-
+        name = "No Name"
+        name = bluetooth.lookup_name(address)
+        if name is not None:
+            print("hi")
         #When a user clonnects, print the address of that user
-        print ( address[0] +  " connected")
-        broadcast (address[0] + " Connected to the server")
+        print ( address[0] + " " + name + " connected")
+        broadcast (address[0] + " " + name +" connected to the server")
         # creates and individual thread for every user
         # that connects
-        print("Creating thread")
+        # print("Creating thread")
         threading.Thread(target= clientThread, args=(connection,address) ).start()
         # start_new_thread(clientThread,(connection,address))
 
+        bluetooth.stop_advertising(server_sock)
         #Maybe use this, don't know yet
         server_sock.close()
 
@@ -139,9 +117,7 @@ while True:
             try:
                 print("<YOU> " + message)
                 message = "<Server> " + message
-                broadcast(message)
-                
-                
+                broadcast(message)   
                 pass
             except:#for some reason always goes into except state, even when message is sent correctly
                 pass 
