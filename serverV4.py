@@ -63,7 +63,7 @@ def socketListner():
         server_sock = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
         server_sock.bind(("", bluetooth.PORT_ANY))
         #Manages how many unnacepted connections can be managed
-        server_sock.listen(10)
+        server_sock.listen(1)
 
         port = server_sock.getsockname()[1]
 
