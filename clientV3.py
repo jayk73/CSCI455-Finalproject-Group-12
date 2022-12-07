@@ -99,7 +99,7 @@ if first_match is None:
             
 # first_match = service_matches[0]
 
-port = first_match["port"]
+port = first_match["port"] 
 name = first_match["name"]
 host = first_match["host"]
 
@@ -123,7 +123,7 @@ while True:
     data = input()
     if not data:
         break
-    
+    print("<YOU> " + data)
     sock.send(data)
 
 sock.close()
