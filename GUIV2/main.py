@@ -41,23 +41,68 @@ class NewConnectionListener(QObject):
     clientMessage = pyqtSignal(bluetooth.BluetoothSocket, str)
     clientToRemove = pyqtSignal(bluetooth.BluetoothSocket)
     
-    numConnections = 0
+    
 
     def run(self):
-        port = 5 #arbitrary number, there is code to serach for an available port
-        server_sock.bind(("",port))
-        server_sock.listen(max_connections) #Allows up to 5 active connections
-        while True:
-            connection, address = server_sock.accept()
+        # port = 5 #arbitrary number, there is code to serach for an available port
+        # server_sock.bind(("",port))
+        # server_sock.listen(max_connections) #Allows up to 5 active connections
+        # while True:
+        #     connection, address = server_sock.accept()
             
-            print("Connection details: "  + str(connection) + " , " + str(address) )
+        #     print("Connection details: "  + str(connection) + " , " + str(address) )
             
-            #Maintain a list of clients so you can broadcast messages to all clients
-            self.sockets.emit(connection, address)
+        #     #Maintain a list of clients so you can broadcast messages to all clients
+        #     self.sockets.emit(connection, address)
 
-            #Welcome them to the server 
-            self.test.emit(connection, "Welcome to the server!")
+        #     #Welcome them to the server 
+        #     self.test.emit(connection, "Welcome to the server!")
 
+        
+        server_sock = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
+        server_sock.bind(("", bluetooth.PORT_ANY))
+        #Manages how many unnacepted connections can be managed
+        server_sock.listen(1)
+
+        port = server_sock.getsockname()[1]
+
+        # uuid = "94f39d29-7d6d-437d-973b-fba39e49d4ee"
+
+        uuid =  "0E448EB5-3425-ED48-91BE-1AED04C0512D"
+
+        bluetooth.advertise_service(server_sock, "SampleServer", service_id=uuid,
+                                    service_classes=[uuid, bluetooth.SERIAL_PORT_CLASS],
+                                    profiles=[bluetooth.SERIAL_PORT_PROFILE],
+                                    # protocols=[bluetooth.OBEX_UUID]
+                                    )
+
+        print("Waiting for connection on RFCOMM channel", port)
+        #Accepts connection request. Store paramteters 'connection' and 'address'
+        #which is socket object for that user and bluettooth address they connected from
+        connection, address = server_sock.accept()
+
+        #Maintain a list of clients so you can broadcast messages to all clients
+        # list_of_clients.append(connection)
+        self.sockets.emit(connection, address)
+
+        name = "No Name"
+        name = bluetooth.lookup_name(address)
+        if name is not None:
+            print("hi")
+        #When a user clonnects, print the address of that user
+        # print ( address[0] + " " + name + " connected")
+        # broadcast (address[0] + " " + name +" connected to the server")
+        # creates and individual thread for every user
+        # that connects
+        # print("Creating thread")
+        # threading.Thread(target= clientThread, args=(connection,address) ).start()
+        # start_new_thread(clientThread,(connection,address))
+
+        
+
+        bluetooth.stop_advertising(server_sock)
+        #Maybe use this, don't know yet
+        server_sock.close()
             
     
     # def watchConnection(self, connection, address):
@@ -98,6 +143,8 @@ class NewConnectionListener(QObject):
 
     def deleteClient(self, conn):
         self.clientToRemove.emit(conn)
+
+
 
 
 #Server listens to a specifc connection for mesages from client          
@@ -226,16 +273,42 @@ class ChatRoomServer(QMainWindow, Ui_ChatRoom):
         ##########################
         #######################
         self.addToList(connection, address)
-        self.thread2 = QThread()
-        self.worker2 = clientListener(connection, address)
-        # self.worker2 = clientListener()
-        self.worker2.moveToThread(self.thread2)
-        self.thread2.started.connect(self.worker2.run)
+        self.serverWelcome(connection)
+        while True:
+            try:
+                
+                data = connection.recv(1024).decode
+                # data = self.conn.recv(1024).decode()
+                if data:
+                    print ("<" + address[0] + "> " + data)
+                    
+                    message_to_send = ("<" + address[0] + "> " + data)
+                    # broadcast(message_to_send, connection)
+                    self.broadcast(message_to_send, connection)
+                    # self.CLMessage.emit(message_to_send, self.conn)
 
-        #Upon input from the thread, broadcast message
-        self.worker2.CLMessage.connect(self.broadcast)
-        self.worker2.remover.connect(self.removeFromList)
-        self.thread2.start()
+                else:
+                    # remove(connection)
+                    time.sleep(1)
+                    # self.remover.emit(self.conn)
+                    self.removeFromList(connection)
+                    print("Removing connection")
+                    break
+            except:
+                continue
+
+
+
+        # self.thread2 = QThread()
+        # self.worker2 = clientListener(connection, address)
+        # # self.worker2 = clientListener()
+        # self.worker2.moveToThread(self.thread2)
+        # self.thread2.started.connect(self.worker2.run)
+
+        # #Upon input from the thread, broadcast message
+        # self.worker2.CLMessage.connect(self.broadcast)
+        # self.worker2.remover.connect(self.removeFromList)
+        # self.thread2.start()
 
     def addToList(self, connection, address):
         #Add client to list
@@ -247,6 +320,7 @@ class ChatRoomServer(QMainWindow, Ui_ChatRoom):
     def removeFromList(self, client):
         if client in self.list_of_clients:
             self.list_of_clients.remove(client)
+
     #For forwarding a message from one client to others
     def broadcast(self, message, client):
         self.chatDisplay_listWidget.addItem(message)
@@ -262,7 +336,7 @@ class ChatRoomServer(QMainWindow, Ui_ChatRoom):
                     pass
                 except:#for some reason always goes into except state, even when message is sent correctly
                     pass 
-
+        
     def sendMessage(self):
         self.chatDisplay_listWidget.addItem("<YOU> " + self.enterMessage_textBox.toPlainText())
         message = "<SERVER> " + self.enterMessage_textBox.toPlainText()
