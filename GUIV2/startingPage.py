@@ -12,10 +12,80 @@
 
 
 from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtCore import QObject, QThread,  pyqtSignal
 
-import bluetooth
+import bluetooth, time
+my_list = []
+#Thread which loooks for bluetooth devices nearby. Emits a signal for
+#Every device found.
+class searchWorker(QObject):
+    finished = pyqtSignal()
+    numDevices = pyqtSignal(int)
+    progress = pyqtSignal(object)
+    
+    def run(self):
+        nearby_devices = bluetooth.discover_devices(
+        duration=2, lookup_names=True, flush_cache=True, lookup_class=False)
+        
+        print("found %d device(s)" % len(nearby_devices))
+        # self.label.setText("found %d device(s)" % len(nearby_devices))
+        ### self.numDevices.emit( len(nearby_devices) )
+        # my_list = []
+        i = 1
+        for addr, name in nearby_devices:    
+            try:
+                #print("  %s - %s" % (addr, name))
+                self.progress.emit(  ["INDEX: " + str(i), "NAME: " + name, "Address: " ,  addr]  )
+                # my_list.append(["INDEX: " + str(i), "NAME: " + name, "Address: " +  addr])
+                i += 1
+            except UnicodeEncodeError:
+                #print("  %s - %s" % (addr, name.encode('utf-8', 'replace')))
+                self.progress.emit(  ["INDEX: " + str(i) , "NAME: " + name.encode('utf-8', 'replace'),"Address: " ,  addr]  )
+                # my_list.append(["INDEX: " + str(i) , "NAME: " + name.encode('utf-8', 'replace'),"Address: " +  addr])
+                i += 1
+        time.sleep(2)
+        self.finished.emit()
+
+class serviceSearcher(QObject):
+    finished = pyqtSignal()
+    goodProgress = pyqtSignal(str)
+    badProgress = pyqtSignal(str)
+    
+    def run(self):
+        print("Elemetns to look at " +  str(len(my_list))  )
+
+        for element in my_list:
+            addressToSearch = element[3]
+            services = bluetooth.find_service( address = addressToSearch )
+            if len(services) <=0:
+                print("no server found :( on " + str(element))
+                self.badProgress.emit( str(element)  )
+            else:
+                for ser in services:
+                    if  "SampleServer" in str(  ser["name"]   ) :
+                        print("Found Running server in " + str(element) )
+                        # first_match = ser
+                        self.goodProgress.emit( str(element) )
+# for element in my_list:
+        #     addressToSearch = element[3]
+        #     services = bluetooth.find_service( address = addressToSearch )
+        #     if len(services) <=0:
+        #         print("no server found :( \n")
+        #         findItem = self.listWidget.findItems(str(element), QtCore.Qt.MatchContains)
+        #         for it in findItem:
+        #             it.setText("No server :( " + str(element) )
+        #         # self.badProgress.emit( str(element)  )
+        #     else:
+        #         for ser in services:
+        #             if  "SampleServer" in str(  ser["name"]   ) :
+        #                 print("Found Running server in " + str(element) )
+        #                 # first_match = ser
+        #                 # self.goodProgress.emit( str(element) )
+
+        
 
 class Ui_StartingPage(object):
+    
     def setupUi(self, MainWindow):
         
         MainWindow.setObjectName("MainWindow")
@@ -72,35 +142,84 @@ class Ui_StartingPage(object):
         
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
+    
 
 
     def searching(self):
 
         #Clear CURRENT LIST !!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        self.listWidget.clear()
 
-
-        # self.label.setText("Searching for nearby devices .... ")
+        self.label.setText("Searching for nearby devices .... ")
         
-        nearby_devices = bluetooth.discover_devices(
-            duration=2, lookup_names=True, flush_cache=True, lookup_class=False)
+        
+        #Declare Thread
+        self.thread = QThread()
+        #Declare Worker
+        self.worker = searchWorker()
+        #Move Worker to thread
+        self.worker.moveToThread(self.thread)
+        #make connection to worker in thread
+        self.thread.started.connect(self.worker.run)
+        #Setup responses to worker signals
+        
+        self.worker.progress.connect(self.newDevice) #A new device has connected. Add to list
+        self.worker.finished.connect(self.allFound) #Worker claims no more devices discovered
 
-        #print("found %d device(s)" % len(nearby_devices))
-        self.label.setText("found %d device(s)" % len(nearby_devices))
-        my_list = []
-        i = 1
-        for addr, name in nearby_devices:    
-            try:
-                #print("  %s - %s" % (addr, name))
-                my_list.append(["INDEX: " + str(i), "NAME: " + name, "Address: " +  addr])
-                i += 1
-            except UnicodeEncodeError:
-                #print("  %s - %s" % (addr, name.encode('utf-8', 'replace')))
-                my_list.append(["INDEX: " + str(i) , "NAME: " + name.encode('utf-8', 'replace'),"Address: " +  addr])
-                i += 1
+        self.thread.start()
+        self.serverThread = QThread()
+        self.serverWorker = serviceSearcher()
+        self.serverWorker.moveToThread(self.serverThread)
+        self.thread.started.connect(self.serverWorker.run)
 
-        for element in my_list:
-            #print(element)
-            self.listWidget.addItem(str(element))
+        self.serverWorker.goodProgress.connect(self.serviceFound)
+        self.serverWorker.badProgress.connect(self.noServiceFound)
+
+    #called each time searchWorker finds a device
+    def newDevice(self, newClient):
+        my_list.append(newClient)
+        self.listWidget.addItem(str(newClient))
+
+    #called when searchWorker has found all devices
+    def allFound(self):
+        # for element in self.my_list:
+            #Create thread to check for services 
+
+        self.label.setText("Searching for servers......")
+        
+
+        self.serverThread.start()
+        # for element in my_list:
+        #     addressToSearch = element[3]
+        #     services = bluetooth.find_service( address = addressToSearch )
+        #     if len(services) <=0:
+        #         print("no server found :( \n")
+        #         findItem = self.listWidget.findItems(str(element), QtCore.Qt.MatchContains)
+        #         for it in findItem:
+        #             it.setText("No server :( " + str(element) )
+        #         # self.badProgress.emit( str(element)  )
+        #     else:
+        #         for ser in services:
+        #             if  "SampleServer" in str(  ser["name"]   ) :
+        #                 print("Found Running server in " + str(element) )
+        #                 # first_match = ser
+        #                 # self.goodProgress.emit( str(element) )
+        
+        
+
+    def serviceFound(self, element):
+        
+        findItem = self.listWidget.findItems(str(element), QtCore.Qt.MatchContains)
+        for it in findItem:
+            it.setText("Found Server: " + str(element) )
+
+    def noServiceFound(self, element):
+        
+        findItem = self.listWidget.findItems(str(element), QtCore.Qt.MatchContains)
+        for it in findItem:
+            it.setText("No server :( " + str(element) )
+       
+                  
 
     def presentButton(self):
         self.button_2.setEnabled(True)
