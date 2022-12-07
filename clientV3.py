@@ -51,13 +51,18 @@ for addr, name in nearby_devices:
 
 for element in my_list:
     print(element)
-    # print("Services Found: ")
-    # services = bluetooth.find_service( element[2] )
-    # if len(services) <=0:
-    #     print("no services found :( \n")
-    # else:
-    #     for serv in services:
-    #         print( serv['name'] + "\n")
+for element in my_list:
+    print("Looking for servers on " + str(element) + ": ")
+    addressToSearch = element[2]
+    services = bluetooth.find_service( address = addressToSearch )
+
+    if len(services) <=0:
+        print("no server found :( \n")
+    else:
+        for ser in services:
+            if  "SampleServer" in str(  ser["name"]   ) :
+                print("Found Running server in " + str(element) )
+                first_match = ser
 
 choice = input("Select the index of the device you would like to communicate with:   ")
 choice = int(choice)
@@ -79,7 +84,8 @@ connect_name = bd_name
 
 # search for the SampleServer service
 # uuid = "94f39d29-7d6d-437d-973b-fba39e49d4ee"
-uuid = "0E448EB5-3425-ED48-91BE-1AED04C0512D"
+# uuid = "0E448EB5-3425-ED48-91BE-1AED04C0512D"
+
 service_matches = bluetooth.find_service( address=connect_addr )
 
 first_match = None
@@ -96,16 +102,13 @@ if first_match is None:
     print("Couldn't find the SampleServer service.")
     sys.exit(0)
 
-            
-# first_match = service_matches[0]
 
 port = first_match["port"] 
 name = first_match["name"]
 host = first_match["host"]
 
+# print("Connecting to \"{}\" on {} with port {}".format(name, host, port))
 
-
-print("Connecting to \"{}\" on {} with port {}".format(name, host, port))
 
 # Create the client socket
 sock = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
@@ -118,7 +121,7 @@ s1.start()
 
 
 
-print("Connected. Type something...")
+
 while True:
     data = input()
     if not data:
