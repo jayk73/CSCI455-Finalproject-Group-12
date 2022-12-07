@@ -38,7 +38,7 @@ list_of_clients = []
 #Listens on a client connection for input from the client.
 def clientThread(connection, address):
     print("thread created")
-    connection.send("Welcome to this chatroom!")
+    connection.send("<SERVER> Welcome to this chatroom!")
     
     while True:
         try:
@@ -133,7 +133,7 @@ while True:
         for clients in list_of_clients:
             try:
                 print("<YOU> " + message)
-                message = "<Server>" + message
+                message = "<Server> " + message
                 broadcast(message)
                 
                 
