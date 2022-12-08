@@ -35,7 +35,7 @@ class ClientSocketListener(QObject):
                         if mess:
                             print(mess + " in socket listener")
                             #Send message back to ChatRoom to add to widget
-                            # self.progress.emit(mess, client_sock)
+                            self.progress.emit(mess, client_sock)
                            
                             #continue
             except:
@@ -84,7 +84,7 @@ class NewConnectionListener(QObject):
                                         # protocols=[bluetooth.OBEX_UUID]
                                         )
 
-            print("Waiting for connection on RFCOMM channel " +  str(port) )
+            # print("Waiting for connection on RFCOMM channel " +  str(port) )
             #Accepts connection request. Store paramteters 'connection' and 'address'
             #which is socket object for that user and bluettooth address they connected from
             connection, address = server_sock.accept()
@@ -102,56 +102,22 @@ class NewConnectionListener(QObject):
             # if name is not None:
             #     print("hi")
             #When a user clonnects, print the address of that user
-            # print ( address[0] + " " + name + " connected")
-            # broadcast (address[0] + " " + name +" connected to the server")
             # creates and individual thread for every user
             # that connects
             # print("Creating thread")
             # threading.Thread(target= clientThread, args=(connection,address) ).start()
             # start_new_thread(clientThread,(connection,address))
 
-            
 
             bluetooth.stop_advertising(server_sock)
             #Maybe use this, don't know yet
             server_sock.close()
-            
-    
-    # def watchConnection(self, connection, address):
-    #     print("Watching")
-    #     if self.numConnections == 0:
-    #         #create thread to manage them
-    #         # # #Start a thread to listenm on this connection
-    #         self.thread1 = QThread()
-    #         self.worker1 = clientListener(connection, address)
-    #         # self.worker2 = clientListener()
-    #         self.worker1.moveToThread(self.thread1)
-    #         self.thread1.started.connect(self.worker1.run)
-
-    #         #Upon input from the thread, broadcast message
-    #         self.worker1.sockets.connect(self.forwardMessage)
-    #         self.worker1.remover.connect(self.deleteClient)
-    #         self.thread1.start()
-
-    #     elif self.numConnections == 1:
-    #          #create thread to manage them
-    #         # # #Start a thread to listenm on this connection
-    #         self.thread2 = QThread()
-    #         self.worker2 = clientListener(connection, address)
-    #         # self.worker2 = clientListener()
-    #         self.worker2.moveToThread(self.thread2)
-    #         self.thread2.started.connect(self.worker2.run)
-
-    #         #Upon input from the thread, broadcast message
-    #         self.worker2.sockets.connect(self.forwardMessage)
-    #         self.worker2.remover.connect(self.deleteClient)
-    #         self.thread2.start()
   
 
     def forwardMessage(self, message, conn):
-        print("Forwarding message")
+        
         self.clientMessage.emit(message, conn)
-        print("Forwarding message")
+        
 
     def deleteClient(self, conn):
         self.clientToRemove.emit(conn)
@@ -159,19 +125,19 @@ class NewConnectionListener(QObject):
 
 #Listens on a client connection and print everything it hears.
 def clientThread(connection, address):
-    print("thread created")
+    
     connection.send("<SERVER> Welcome to this chatroom!")
     
     while True:
         try:
             data = connection.recv(1024).decode()
             if data:
-                print ("<" + address[0] + "> " + data)
-                message_to_send = "<" + address[0] + "> " + data
+                print (str(connection) + "<" + address[0] + "> " + data)
+                # message_to_send = "<" + address[0] + "> " + data
                 # forward(message_to_send, connection)
             else:
                 # remove(connection)
-                print("Removing connection")
+                # print("Removing connection")
                 break
         except:
             continue
@@ -242,7 +208,7 @@ class ChatRoom(QMainWindow, Ui_ChatRoom):
         self.sendMessage_button.clicked.connect(self.sendMessage)
 
     def printMessge(self, message, conn):
-        print("In other: " + message)
+        
         self.chatDisplay_listWidget.addItem(message)
         # self.chatDisplay_listWidget.repaint()
         # val = self.chatDisplay_listWidget.count()
@@ -250,18 +216,16 @@ class ChatRoom(QMainWindow, Ui_ChatRoom):
         # QApplication.processEvents()
         # QCoreApplication.processEvents()
         
-        print('Got message: ' + message)
 
     def sendMessage(self):
         
         message = self.enterMessage_textBox.toPlainText()
-        print("Sending message: " + message + " to " + str(client_sock) )
         #Remove new line charachters from text to prevent from breaking the server
         message.replace("\n", "")
         self.enterMessage_textBox.setPlainText("")
         
         # client_sock.send(message).encode()
-        self.chatDisplay_listWidget.addItem("<YOU> " + message)
+        # self.chatDisplay_listWidget.addItem("<YOU> " + message)
         # test = str(client_sock.send(message).encode() )
         message = message.encode()
         client_sock.send(message)
@@ -296,7 +260,16 @@ class ChatRoomServer(QMainWindow, Ui_ChatRoom):
         sys.stdout = EmittingStream(textWritten=self.normalOutputWritten)
     
     def normalOutputWritten(self, text):
-        self.chatDisplay_listWidget.addItem(text)
+        try:
+            index = text.index("<")
+            index2 = text.index("<",index+1)
+            connection = text[index+1:index2-2]
+            message = text[index2:]
+            self.broadcast(message, connection)
+            
+        except:
+            pass
+        
 
     def manageNewConnection(self, connection, address):
         #####################################
@@ -307,7 +280,8 @@ class ChatRoomServer(QMainWindow, Ui_ChatRoom):
         #######################
         self.addToList(connection, address)
         self.serverWelcome(connection)
-
+        # self.chatDisplay_listWidget.addite( str(address) + " has joined")
+        self.broadcast(str(address) + " has joined", connection )
         # while True:
         #     try:
                 
@@ -348,7 +322,6 @@ class ChatRoomServer(QMainWindow, Ui_ChatRoom):
         #Add client to list
         self.list_of_clients.append(connection)
 
-        print("Added to list")
 
 
     def removeFromList(self, client):
@@ -360,10 +333,7 @@ class ChatRoomServer(QMainWindow, Ui_ChatRoom):
         self.chatDisplay_listWidget.addItem(message)
 
         for clients in self.list_of_clients:
-            ####
-            ##REMEMBER TO UNCOMENT THIS ONLY FOR TESTING!!!!!!!!!
-            ####
-            # if clients != client:
+            if clients != client:
                 try:
                     mes = message.encode()
                     clients.send(mes)
@@ -374,14 +344,15 @@ class ChatRoomServer(QMainWindow, Ui_ChatRoom):
     def sendMessage(self):
         self.chatDisplay_listWidget.addItem("<YOU> " + self.enterMessage_textBox.toPlainText())
         message = "<SERVER> " + self.enterMessage_textBox.toPlainText()
-        print("Sending message: " + message)
+        
         #Remove new line charachters from text to prevent from breaking the server
         message.replace("\n", "")
         self.enterMessage_textBox.setPlainText("")
+        message = message.encode()
         for clients in self.list_of_clients:
             # if clients != client:
                 try:
-                    str(clients.send(message).encode())
+                    clients.send(message)
                     pass
                 except:#for some reason always goes into except state, even when message is sent correctly
                     pass 
@@ -390,11 +361,10 @@ class ChatRoomServer(QMainWindow, Ui_ChatRoom):
 
     def serverWelcome(self, connection):
         message = "Welcome to the server"
-        print("Sending welcome message")#debugging
+        
         for clients in self.list_of_clients:
             if clients == connection:
                 test = str(connection.send(message)).encode()
-                print("Sending " + message + " to " + str(clients))
 
 
 

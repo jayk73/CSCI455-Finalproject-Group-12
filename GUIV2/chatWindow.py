@@ -65,7 +65,7 @@ class Ui_ChatRoom(object):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
         self.sendMessage_button.setText(_translate("MainWindow", "Send Message"))
-        self.label.setText(_translate("MainWindow", "Type Message Here: "))
+        self.label.setText(_translate("MainWindow", " Type Message Here: "))
         self.quit_Button.setText(_translate("MainWindow", "Quit"))
 
 
