@@ -13,6 +13,7 @@ client_sock = bluetooth.BluetoothSocket( bluetooth.RFCOMM )
 server_sock = bluetooth.BluetoothSocket( bluetooth.RFCOMM )
 
 #Listens for any output from print statements.
+#Used by server to catch messages from clients.
 class EmittingStream(QObject):
 
     textWritten = pyqtSignal(str)
@@ -21,7 +22,8 @@ class EmittingStream(QObject):
         self.textWritten.emit(str(text))
 
 
-#For a client connection; thread to listen for incoming messages from the server
+#For a client connection; 
+#thread to listen for incoming messages from the server
 class ClientSocketListener(QObject):
     progress = pyqtSignal(str, bluetooth.BluetoothSocket)
     def run(self):
@@ -43,7 +45,9 @@ class ClientSocketListener(QObject):
         
 
 
-#Server thread. Listens for new threads appearnig from server    
+#Server thread. Listens for new threads attempting to connect to the server.
+# Listens on an availalbe port. For every connection, close the server socket
+# and start listening on a new port.   
 class NewConnectionListener(QObject):
     # progress = pyqtSignal(str)
     sockets = pyqtSignal(bluetooth.BluetoothSocket, tuple)
@@ -64,6 +68,7 @@ class NewConnectionListener(QObject):
                                         profiles=[bluetooth.SERIAL_PORT_PROFILE],
                                         # protocols=[bluetooth.OBEX_UUID]
                                         )
+
             #Accepts connection request. Store paramteters 'connection' and 'address'
             #which is socket object for that user and bluettooth address they connected from
             connection, address = server_sock.accept()
@@ -73,19 +78,17 @@ class NewConnectionListener(QObject):
             #Start listening to that connection
             threading.Thread(target= clientThread, args=(connection,address) ).start()
             bluetooth.stop_advertising(server_sock)
-            #Maybe use this, don't know yet
+            #Close the socket
             server_sock.close()
-  
-
-    def forwardMessage(self, message, conn):
+    # def forwardMessage(self, message, conn):
         
-        self.clientMessage.emit(message, conn)
+    #     self.clientMessage.emit(message, conn)
         
 
-    def deleteClient(self, conn):
-        self.clientToRemove.emit(conn)
+    # def deleteClient(self, conn):
+    #     self.clientToRemove.emit(conn)
 
-
+#For server thread.
 #Listens on a client connection and print everything it hears.
 def clientThread(connection, address):
     
@@ -97,13 +100,17 @@ def clientThread(connection, address):
             if data:
                 print (str(connection) + "<" + address[0] + "> " + data)   
             else:
-                ##REPLACE WITH PRINT STATEMNT THAT INDICATES TO REMOVE THE CONENCTION
-                # remove(connection)
-                # print("Removing connection")
+                #If we had more time, this would be a print statement
+                #That indicates for the server to remove the connection
                 break
         except:
             continue
 
+
+# For a client connection. 
+#Opens a thread to listen to the server.
+# At the same time, be ready to send data
+# from texbox to the server.
 class ChatRoom(QMainWindow, Ui_ChatRoom):
     def __init__(self):
         super(ChatRoom, self).__init__()
@@ -118,22 +125,19 @@ class ChatRoom(QMainWindow, Ui_ChatRoom):
         self.worker.moveToThread(self.thread)
         #connect signals and slots
         self.thread.started.connect(self.worker.run)
-        #don't know how many of these you need
-        # self.worker.finished.connect(self.thread.quit)
-        # self.worker.finished.connect(self.worker.deleteLater)
-        # self.thread.finished.connect(self.thread.deleteLater)
+
         self.worker.progress.connect(self.printMessge)
         self.thread.start()
 
         #Upon button press, send the message from the textbox to the server. 
         #Print the message to the listview
         self.sendMessage_button.clicked.connect(self.sendMessage)
-
+    #Prints message from server
     def printMessge(self, message, conn):
         
         self.chatDisplay_listWidget.addItem(message)
         
-
+    #Send a message to the server.
     def sendMessage(self):
         
         message = self.enterMessage_textBox.toPlainText()
@@ -141,13 +145,16 @@ class ChatRoom(QMainWindow, Ui_ChatRoom):
         message.replace("\n", "")
         self.enterMessage_textBox.setPlainText("")
         
-        # client_sock.send(message).encode()
-        # self.chatDisplay_listWidget.addItem("<YOU> " + message)
-        # test = str(client_sock.send(message).encode() )
         message = message.encode()
         client_sock.send(message)
-    
+
+
+#For Server Connections
+#Starts threads to listen for new connections and 
+#starts a thread to listen on each of those connections.
+#Forwards any user input to every client thats currently connected,
 class ChatRoomServer(QMainWindow, Ui_ChatRoom):
+    #Maintain list of currently connected clients.
     list_of_clients = []
     def __init__(self):
         super(ChatRoomServer, self).__init__()
@@ -169,9 +176,10 @@ class ChatRoomServer(QMainWindow, Ui_ChatRoom):
         self.thread1.start()
 
         self.sendMessage_button.clicked.connect(self.sendMessage)
-
+        #Catches print output and forwards to clients.
         sys.stdout = EmittingStream(textWritten=self.normalOutputWritten)
-    
+    #Get the message and connection address from the print statement.
+    #Broadcast to every client
     def normalOutputWritten(self, text):
         try:
             index = text.index("<")
@@ -183,26 +191,26 @@ class ChatRoomServer(QMainWindow, Ui_ChatRoom):
         except:
             pass
         
-
+    #Upon detecting a new connection, add them to the list of connected clients,
+    #send a welcome message to the client
+    # and let everyone know someone new has joined.
     def manageNewConnection(self, connection, address):
 
         self.addToList(connection, address)
         self.serverWelcome(connection)
-        # self.chatDisplay_listWidget.addite( str(address) + " has joined")
         self.broadcast(str(address) + " has joined", connection )
-        
-
+    
     def addToList(self, connection, address):
         #Add client to list
         self.list_of_clients.append(connection)
-
-
 
     def removeFromList(self, client):
         if client in self.list_of_clients:
             self.list_of_clients.remove(client)
 
-    #For forwarding a message from one client to others
+    #Sends a message to everyone in the server.
+    #Messages consist of who sent them (client var)
+    #and the text message (message var)
     def broadcast(self, message, client):
         self.chatDisplay_listWidget.addItem(message)
 
@@ -212,9 +220,10 @@ class ChatRoomServer(QMainWindow, Ui_ChatRoom):
                     mes = message.encode()
                     clients.send(mes)
                     pass
-                except:#for some reason always goes into except state, even when message is sent correctly
+                except:
                     pass 
-        
+    #Used when the server sends a message .
+    # Forwards to all clients.  
     def sendMessage(self):
         self.chatDisplay_listWidget.addItem("<YOU> " + self.enterMessage_textBox.toPlainText())
         message = "<SERVER> " + self.enterMessage_textBox.toPlainText()
@@ -228,11 +237,10 @@ class ChatRoomServer(QMainWindow, Ui_ChatRoom):
                 try:
                     clients.send(message)
                     pass
-                except:#for some reason always goes into except state, even when message is sent correctly
+                except:
                     pass 
-        # client_sock.send(message)
         
-
+    #Sends welcome message to specific client.
     def serverWelcome(self, connection):
         message = "Welcome to the server"
         
@@ -241,7 +249,9 @@ class ChatRoomServer(QMainWindow, Ui_ChatRoom):
                 test = str(connection.send(message)).encode()
 
 
-
+#Main start page.
+#Allows users to look for nearby devices to connect to
+#or choose to host a server.
 class StartPage(QMainWindow, Ui_StartingPage):
     def __init__(self):
         super(StartPage, self).__init__()
@@ -250,6 +260,7 @@ class StartPage(QMainWindow, Ui_StartingPage):
         self.button_2.clicked.connect(self.client)
         self.button_3.clicked.connect(self.server)
 
+    #Called when a user attempts to make a connection to join a server
     def client(self):
         #self.listWidget.selectedItems
         for item in self.listWidget.selectedItems():
@@ -292,8 +303,6 @@ class StartPage(QMainWindow, Ui_StartingPage):
         
         client_sock.connect((host, port))
 
-
-
         self.hide()
         self.myChatroom = ChatRoom()
         self.myChatroom.show()
@@ -305,10 +314,7 @@ class StartPage(QMainWindow, Ui_StartingPage):
         self.myChatroom.show()
 
 if __name__ == '__main__':
-    # app = QApplication(sys.argv)
-    # w = StartPage()
-    # w.show()
-    # sys.exit(app.exec_())
+
     
 
     app = QApplication(sys.argv)
@@ -318,6 +324,3 @@ if __name__ == '__main__':
     
 
     sys.exit(app.exec_())
-    # w = myWindow()
-    # w.show()
-    # sys.exit(app.exc_())
